@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Taekwondo Scoreboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+
+<body class="p-3">
+  <div class="container">
+    <h1 class="mb-3 text-center">Taekwondo Scoreboard</h1>
+
+    <!-- Scoreboard -->
+    <div id="board">
+      <div class="row text-center mb-3">
+        <div class="col">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h2>Round: <span id="round">1</span></h2>
+              <h3>Timer: <span id="timer">30</span> sec</h3>
+              <div class="d-flex justify-content-center gap-2 mt-2">
+                <button class="btn btn-warning" onclick="adjustTimer(-5)">-5 sec</button>
+                <button class="btn btn-warning" onclick="adjustTimer(5)">+5 sec</button>
+                <button class="btn btn-danger" onclick="endRound()">End Round</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 text-center mb-3">
+        <div class="col-12 col-md-6">
+          <div class="card shadow-sm score-card chong">
+            <div class="card-body">
+              <h2>Chong</h2>
+              <div class="display-4" id="chongScore">0</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="card shadow-sm score-card hong">
+            <div class="card-body">
+              <h2>Hong</h2>
+              <div class="display-4" id="hongScore">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 text-center">
+        <div class="col-12">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h4>Round Wins</h4>
+              <p>Chong: <span id="rwChong">0</span> | Hong: <span id="rwHong">0</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    let timerValue = 30;
+
+    // Auto-join default match (no input needed)
+    const matchId = "defaultMatch";
+    socket.emit("joinMatch", matchId, "scoreboard");
+
+    // Update scores
+    socket.on("updateScore", ({ scores, roundWins, currentRound }) => {
+      document.getElementById("chongScore").innerText = scores.chong;
+      document.getElementById("hongScore").innerText = scores.hong;
+      document.getElementById("round").innerText = currentRound;
+      document.getElementById("rwChong").innerText = roundWins.chong;
+      document.getElementById("rwHong").innerText = roundWins.hong;
+    });
+
+    // Timer control
+    function adjustTimer(change) {
+      timerValue += change;
+      if (timerValue < 0) timerValue = 0;
+
+      // Update UI immediately
+      document.getElementById("timer").innerText = timerValue;
+
+      // Send to server
+      socket.emit("updateTimer", { matchId, time: timerValue });
+    }
+
+
+    socket.on("timerUpdate", (time) => {
+      document.getElementById("timer").innerText = time;
+      timerValue = time;
+    });
+
+    // End round
+    function endRound() {
+      // Send request to server
+      socket.emit("endRound", matchId);
+    }
+
+    socket.on("roundEnd", ({ winner, roundWins }) => {
+      if (winner) alert(`Round Winner: ${winner}`);
+      document.getElementById("rwChong").innerText = roundWins.chong;
+      document.getElementById("rwHong").innerText = roundWins.hong;
+    });
+
+
+    // End match
+    socket.on("matchEnd", (winner) => {
+      alert(`Match Winner: ${winner}`);
+      // Reset UI timer
+      timerValue = 45;
+      document.getElementById("timer").innerText = timerValue;
+    });
+  </script>
+</body>
+
+</html>
